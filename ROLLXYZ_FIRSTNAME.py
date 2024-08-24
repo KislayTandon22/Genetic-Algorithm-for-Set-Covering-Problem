@@ -1,6 +1,6 @@
-from SetCoveringProblemCreator import *
 import random
 import time
+from SetCoveringProblemCreator import *
 
 def initialize_population(size, subsets):
     population = []
@@ -41,20 +41,33 @@ def mutate(individual, mutation_rate):
         if random.random() < mutation_rate:
             individual[i] = 1 - individual[i]
 
-def genetic_algorithm(subsets, population_size=100, generations=100, mutation_rate=0.01):
+def genetic_algorithm(subsets, population_size=100, generations=100, mutation_rate=0.01, start_time=None, max_time=20):
     population = initialize_population(population_size, subsets)
+    best_individual = max(population, key=lambda ind: fitness(ind, subsets))
+
     for generation in range(generations):
         fitnesses = [fitness(ind, subsets) for ind in population]
         population = selection(population, fitnesses)
+        
         next_generation = []
-        for i in range(0, len(population), 2):
-            parent1, parent2 = population[i], population[i+1]
+        for i in range(0, len(population), 1):
+            parent1, parent2 = random.sample(population, 2)
             child1, child2 = crossover(parent1, parent2)
+            
             mutate(child1, mutation_rate)
+            
+
             mutate(child2, mutation_rate)
+            # Check time and update best individual after second mutation
+            if time.time() - start_time > max_time:
+                return max([child2, best_individual], key=lambda ind: fitness(ind, subsets))
+            if fitness(child2, subsets) > fitness(best_individual, subsets):
+                best_individual = child2
+
             next_generation.extend([child1, child2])
+
         population = next_generation
-    best_individual = max(population, key=lambda ind: fitness(ind, subsets))
+
     return best_individual
 
 def main():
@@ -67,13 +80,11 @@ def main():
     listOfSubsets = scp.ReadSetsFromJson("scp_test.json")
     print(f"Number of subsets read from JSON: {len(listOfSubsets)}")
     
-    best_solution = genetic_algorithm(listOfSubsets)
-    
-    
+    best_solution = genetic_algorithm(listOfSubsets, start_time=start_time)
     
     print(f"Number of sets: {len(listOfSubsets)}/{len(subsets)}")
-    
-    
+   
+
     print("Solution:", end=" ")
     for i, bit in enumerate(best_solution):
         print(f"{i}:{bit}", end=", ")
