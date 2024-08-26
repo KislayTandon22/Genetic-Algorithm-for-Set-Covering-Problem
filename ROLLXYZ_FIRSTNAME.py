@@ -17,58 +17,51 @@ def fitness(individual, subsets, universe_size=100):
     coverage_score = len(covered_elements)
     
     subset_count = sum(individual)
-    penalty = subset_count
+    penalty = subset_count  # Adjust the penalty calculation depending on problem specifics
     
     fitness_score = coverage_score - penalty
     
     if coverage_score < universe_size:
-        fitness_score -= (universe_size - coverage_score) * 10
+        fitness_score -= (universe_size - coverage_score) * 10  # Penalizing uncovered elements
     
     return fitness_score
 
-def selection(population, fitnesses):
-    selected = random.choices(population, weights=fitnesses, k=len(population))
-    return selected
+def select_parents(population, fitnesses):
+    total_fitness = sum(fitnesses)
+    probabilities = [f / total_fitness for f in fitnesses]
+    parent1, parent2 = random.choices(population, weights=probabilities, k=2)
+    return parent1, parent2
 
 def crossover(parent1, parent2):
     point = random.randint(1, len(parent1) - 1)
-    child1 = parent1[:point] + parent2[point:]
-    child2 = parent2[:point] + parent1[point:]
-    return child1, child2
+    child = parent1[:point] + parent2[point:]
+    return child
 
 def mutate(individual, mutation_rate):
     for i in range(len(individual)):
         if random.random() < mutation_rate:
-            individual[i] = 1 - individual[i]
+            individual[i] = 1 - individual[i]  # Flip the bit
 
 def genetic_algorithm(subsets, population_size=100, generations=100, mutation_rate=0.01, start_time=None, max_time=20):
     population = initialize_population(population_size, subsets)
     best_individual = max(population, key=lambda ind: fitness(ind, subsets))
-
-    for generation in range(generations):
+    
+    while time.time() - start_time < max_time:
         fitnesses = [fitness(ind, subsets) for ind in population]
-        population = selection(population, fitnesses)
-        
-        next_generation = []
-        for i in range(0, len(population), 1):
-            parent1, parent2 = random.sample(population, 2)
-            child1, child2 = crossover(parent1, parent2)
+        next_population = [] 
+        for _ in range(population_size ):
+            parent1, parent2 = select_parents(population, fitnesses)
+            child = crossover(parent1, parent2)
+            if random.random() < mutation_rate:
+                mutate(child, mutation_rate)
+            next_population.append(child)
             
-            mutate(child1, mutation_rate)
-            
-
-            mutate(child2, mutation_rate)
-            # Check time and update best individual after second mutation
-            if time.time() - start_time > max_time:
-                return max([child2, best_individual], key=lambda ind: fitness(ind, subsets))
-            if fitness(child2, subsets) > fitness(best_individual, subsets):
-                best_individual = child2
-
-            next_generation.extend([child1, child2])
-
-        population = next_generation
-
-    return best_individual
+        population = next_population
+        current_best = max(population, key=lambda ind: fitness(ind, subsets))
+        if fitness(current_best, subsets) > fitness(best_individual, subsets):
+            best_individual = current_best
+    
+    return max(population, key=lambda ind: fitness(ind, subsets))
 
 def main():
     start_time = time.time()
