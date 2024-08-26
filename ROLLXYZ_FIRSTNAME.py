@@ -17,8 +17,7 @@ def fitness(individual, subsets, universe_size=100):
     coverage_score = len(covered_elements)
     
     subset_count = sum(individual)
-    penalty = subset_count  # Adjust the penalty calculation depending on problem specifics
-    
+    penalty = subset_count  
     fitness_score = coverage_score - penalty
     
     if coverage_score < universe_size:
