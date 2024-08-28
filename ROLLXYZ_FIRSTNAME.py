@@ -41,7 +41,7 @@ def mutate(individual, mutation_rate):
         if random.random() < mutation_rate:
             individual[i] = 1 - individual[i]  # Flip the bit
 
-def genetic_algorithm(subsets, population_size=100, generations=100, mutation_rate=0.01, start_time=None, max_time=20):
+def genetic_algorithm(subsets, population_size=100, generations=100, mutation_rate=0.01, start_time=None, max_time=45):
     population = initialize_population(population_size, subsets)
     best_individual = max(population, key=lambda ind: fitness(ind, subsets))
     
