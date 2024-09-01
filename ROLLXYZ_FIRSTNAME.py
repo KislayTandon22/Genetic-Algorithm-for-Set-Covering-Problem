@@ -36,10 +36,9 @@ def crossover(parent1, parent2):
     child = parent1[:point] + parent2[point:]
     return child
 
-def mutate(individual, mutation_rate):
-    for i in range(len(individual)):
-        if random.random() < mutation_rate:
-            individual[i] = 1 - individual[i]  # Flip the bit
+def mutate(individual):
+    i = random.randint(0, len(individual) - 1)
+    individual[i] = 1 - individual[i] 
 
 def genetic_algorithm(subsets, population_size=100, generations=100, mutation_rate=0.01, start_time=None, max_time=45):
     population = initialize_population(population_size, subsets)
@@ -52,7 +51,7 @@ def genetic_algorithm(subsets, population_size=100, generations=100, mutation_ra
             parent1, parent2 = select_parents(population, fitnesses)
             child = crossover(parent1, parent2)
             if random.random() < mutation_rate:
-                mutate(child, mutation_rate)
+                mutate(child)
             next_population.append(child)
             
         population = next_population
