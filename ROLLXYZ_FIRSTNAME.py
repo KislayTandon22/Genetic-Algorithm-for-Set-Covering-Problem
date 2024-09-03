@@ -41,12 +41,13 @@ def mutate(individual):
     i = random.randint(0, len(individual) - 1)
     individual[i] = 1 - individual[i]
 
-def genetic_algorithm(subsets, population_size=100, generations=1000, 
-                      crossover_rate=0.8, mutation_rate=0.01, start_time=None):
-    
+def genetic_algorithm(subsets, population_size=100, generations=50, mutation_rate=0.01, start_time=None):
     population = initialize_population(population_size, subsets)
     best_fitness_over_time = []
-    min_subsets_over_time = []
+    mean_subset_size_over_time = []
+
+    best_solution = None
+    best_fitness = float('-inf')
 
     for generation in range(generations):
         if time.time() - start_time > MAX_TIME:
@@ -54,128 +55,138 @@ def genetic_algorithm(subsets, population_size=100, generations=1000,
             break
 
         fitnesses = [fitness_function(ind, subsets) for ind in population]
-        best_index = fitnesses.index(max(fitnesses))
-        best_individual = population[best_index]
-        best_fitness_over_time.append(max(fitnesses))
-        min_subsets_over_time.append(sum(best_individual))
-
-        new_population = [best_individual]  # Elitism
-
-        while len(new_population) < population_size:
+        
+        # Track the best fitness and corresponding solution
+        for i, fitness in enumerate(fitnesses):
+            if fitness > best_fitness:
+                best_fitness = fitness
+                best_solution = population[i]
+        
+        best_fitness_over_time.append(best_fitness)
+        mean_subset_size_over_time.append(sum(best_solution))
+        
+        
+        population2 = []
+        for _ in range(population_size):
             parent1, parent2 = select_parents(population, fitnesses)
-            
-            if random.random() < crossover_rate:
-                child = crossover(parent1, parent2)
-            else:
-                child = parent1.copy()
-            mutate(child)
-            new_population.append(child)
+            child = crossover(parent1, parent2)
+            if random.random() < mutation_rate:
+                mutate(child)
+            population2.append(child)
+        
+        population = population2
 
-        population = new_population
+    return best_solution, best_fitness_over_time,  mean_subset_size_over_time
 
-    if not best_fitness_over_time:
-        best_fitness_over_time = [0]
-        min_subsets_over_time = [0]
 
-    best_solution = max(population, key=lambda ind: fitness_function(ind, subsets))
-    return best_solution, best_fitness_over_time, min_subsets_over_time
+
+
+        
 
 def run_experiment(start_time):
-    population_sizes = [50]
-    generations_list = [50]
-    mutation_rates = [0.5]
-    num_experiments = 10
-    scp_sizes = [50, 150, 250, 350]
-    results = []
+    subset_sizes = [50, 150, 250, 350]
+    results = {}
 
-    for size in scp_sizes:
-        for pop_size in population_sizes:
-            for gen_count in generations_list:
-                for mutation_rate in mutation_rates:
-                    mean_fitnesses = []
-                    all_min_subsets_over_time = []
+    for size in subset_sizes:
+        fitness_over_time_all_runs = []
+        mean_subset_size_over_time_all_runs = []
 
-                    for _ in range(num_experiments):
-                        scp = SetCoveringProblemCreator()
-                        subsets = scp.Create(usize=100, totalSets=size)
-                        best_solution, fitness_over_time, min_subsets_over_time = genetic_algorithm(
-                            subsets, population_size=pop_size, generations=gen_count, mutation_rate=mutation_rate, start_time=start_time)
-                        mean_fitnesses.append(fitness_over_time[-1])
-                        all_min_subsets_over_time.append(min_subsets_over_time)
+        scp = SetCoveringProblemCreator()
 
-                    avg_fitness = np.mean(mean_fitnesses)
-                    avg_min_subsets = np.mean(all_min_subsets_over_time, axis=0)
-                    results.append({
-                        'Subset Size': size,
-                        'Population Size': pop_size,
-                        'Generations': gen_count,
-                        'Mutation Rate': mutation_rate,
-                        'Avg Final Fitness': avg_fitness,
-                        'Best Fitness Over Generations': fitness_over_time,
-                        'Min Subsets Over Time': avg_min_subsets
-                    })
+        for _ in range(10):  # Perform 10 runs for each subset size
+            subsets = scp.Create(usize=100, totalSets=size)
+            _, best_fitness_over_time, mean_subset_size_over_time = genetic_algorithm(subsets, population_size=50, generations=50, start_time=start_time)
+
+            fitness_over_time_all_runs.append(best_fitness_over_time)
+            mean_subset_size_over_time_all_runs.append(mean_subset_size_over_time)
+
+        # Calculate mean and standard deviation of best fitness over time across all runs
+        mean_best_fitness_over_time = np.mean(fitness_over_time_all_runs, axis=0)
+        std_best_fitness = np.std([run[-1] for run in fitness_over_time_all_runs])
+
+        # Store results
+        results[size] = {
+            'mean_best_fitness': np.mean([run[-1] for run in fitness_over_time_all_runs]),
+            'std_best_fitness': std_best_fitness,
+            'mean_fitness_over_time': mean_best_fitness_over_time,
+            'mean_subset_size_over_time': np.mean(mean_subset_size_over_time_all_runs, axis=0)
+        }
 
     return results
+
+    
+
+
 
 def plot_experiment_results(results, output_dir='plots'):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    valid_results = [result for result in results if result and 'Subset Size' in result]
-
-    if not valid_results:
-        print("No valid results found to plot.")
-        return
-
-    subset_sizes = sorted(set(result['Subset Size'] for result in valid_results))
-
-    # Arrays to store mean and standard deviation values
-    mean_fitness_values = []
-    std_fitness_values = []
-
-    for size in subset_sizes:
-        filtered_results = [result for result in valid_results if result['Subset Size'] == size]
-        fitness_values_per_run = [result['Best Fitness Over Generations'][-1] for result in filtered_results]
-
-        # Calculate mean and standard deviation for the last generation
-        mean_fitness = np.mean(fitness_values_per_run)
-        std_fitness = np.std(fitness_values_per_run)
-
-        mean_fitness_values.append(mean_fitness)
-        std_fitness_values.append(std_fitness)
-
-    # Plot Mean Fitness Values with Standard Deviation
-    plt.figure(figsize=(10, 6))
-    plt.errorbar(subset_sizes, mean_fitness_values, yerr=std_fitness_values, fmt='-o', capsize=5, ecolor='red')
-    plt.title('Mean Fitness Values with Standard Deviation for Different Subset Sizes')
-    plt.xlabel('Subset Size')
-    plt.ylabel('Fitness Value')
-    plt.grid(True)
-    plt.savefig(f"{output_dir}/mean_fitness_with_std_dev.png")
-    plt.close()
-    print(f"Saved graph: {output_dir}/mean_fitness_with_std_dev.png")
-
-    # Plot Mean Best Fitness Over Generations with Standard Deviation
-    plt.figure(figsize=(10, 6))
-    for size in subset_sizes:
-        filtered_results = [result for result in valid_results if result['Subset Size'] == size]
-        fitness_values_per_run = np.array([result['Best Fitness Over Generations'] for result in filtered_results])
-        mean_fitness_over_generations = np.mean(fitness_values_per_run, axis=0)
-        std_fitness_over_generations = np.std(fitness_values_per_run, axis=0)
-
-        plt.plot(mean_fitness_over_generations, label=f'Subset Size {size}')
-        plt.fill_between(range(len(mean_fitness_over_generations)),
-                         mean_fitness_over_generations - std_fitness_over_generations,
-                         mean_fitness_over_generations + std_fitness_over_generations, alpha=0.2)
+    sizes = sorted(results.keys())
     
-    plt.title('Mean Best Fitness Over Generations with Standard Deviation')
-    plt.xlabel('Generation')
+    # Plot mean and standard deviation of best fitness value after 50 generations
+    means = [results[size]['mean_best_fitness'] for size in sizes]
+    std_devs = [results[size]['std_best_fitness'] for size in sizes]
+
+    plt.figure(figsize=(10, 6))
+    plt.errorbar(sizes, means, yerr=std_devs, fmt='-o', capsize=5, capthick=2, label='Mean Best Fitness ± Std. Dev.')
+
+    # Annotate all points with mean ± std dev
+    for i, size in enumerate(sizes):
+        plt.annotate(f'{means[i]:.2f} ± {std_devs[i]:.2f}', 
+                     (size, means[i]), 
+                     textcoords="offset points", 
+                     xytext=(0,10), 
+                     ha='center')
+
+    plt.title('Mean and Std. Dev. of Best Fitness after 50 Generations')
+    plt.xlabel('Number of Subsets')
     plt.ylabel('Fitness Value')
-    plt.legend()
+    plt.xticks(sizes)
     plt.grid(True)
-    plt.savefig(f"{output_dir}/mean_fitness_over_generations_with_std_dev.png")
-    plt.close()
-    print(f"Saved graph: {output_dir}/mean_fitness_over_generations_with_std_dev.png")
+    plt.legend()
+    plt.savefig(os.path.join(output_dir, 'mean_std_best_fitness.png'))
+    
+
+    # Plot how the mean best fitness value changes over 50 generations for different subset sizes
+    plt.figure(figsize=(12, 8))
+    for size in sizes:
+        mean_fitness = results[size]['mean_fitness_over_time']
+        plt.plot(mean_fitness, label=f'|S| = {size}')
+        
+        # Annotate start and end points
+        plt.annotate(f'{mean_fitness[0]:.2f}', (0, mean_fitness[0]), textcoords="offset points", xytext=(0,10), ha='center')
+        plt.annotate(f'{mean_fitness[-1]:.2f}', (len(mean_fitness) - 1, mean_fitness[-1]), textcoords="offset points", xytext=(0,10), ha='center')
+
+    plt.title('Mean Best Fitness Value over 50 Generations')
+    plt.xlabel('Generations')
+    plt.ylabel('Mean Fitness Value')
+    plt.grid(True)
+    plt.legend()
+    plt.savefig(os.path.join(output_dir, 'mean_fitness_over_time.png'))
+    
+
+    # Plot how the mean subset size changes over 50 generations for different subset sizes
+    plt.figure(figsize=(12, 8))
+    for size in sizes:
+        mean_subset_size = results[size]['mean_subset_size_over_time']
+        plt.plot(mean_subset_size, label=f'|S| = {size}')
+        
+        # Annotate start and end points
+        plt.annotate(f'{mean_subset_size[0]:.2f}', (0, mean_subset_size[0]), textcoords="offset points", xytext=(0,10), ha='center')
+        plt.annotate(f'{mean_subset_size[-1]:.2f}', (len(mean_subset_size) - 1, mean_subset_size[-1]), textcoords="offset points", xytext=(0,10), ha='center')
+
+    plt.title('Mean Subset Size for Highest Fitness over 50 Generations')
+    plt.xlabel('Generations')
+    plt.ylabel('Mean Subset Size')
+    plt.grid(True)
+    plt.legend()
+    plt.savefig(os.path.join(output_dir, 'mean_subset_size_over_time.png'))
+   
+    
+
+
+    
 
 
 
@@ -193,16 +204,37 @@ def main():
         scp = SetCoveringProblemCreator()
         subsets = scp.Create(usize=100, totalSets=size)
         
-        listOfSubsets = scp.ReadSetsFromJson("scp_test.json")
-        best_solution, best_fitness_over_time, min_subsets_over_time = genetic_algorithm(listOfSubsets, start_time=start_time)
-        print(f"Number of sets: {len(listOfSubsets)}/{len(subsets)}")
+        best_solution, best_fitness_over_time, mean_subset_size_over_time = genetic_algorithm(subsets, population_size=50, generations=50, start_time=start_time)
+        
+        print(f"Number of sets: {len(best_solution)}")
         print("Solution:", end=" ")
         for i, bit in enumerate(best_solution):
             print(f"{i}:{bit}", end=", ")
         print()
-        print(f"Fitness value of best state: {fitness_function(best_solution, listOfSubsets)}")
+        print(f"Fitness value of best state: {fitness_function(best_solution, subsets)}")
         print(f"Minimum number of subsets that can cover the universe set: {sum(best_solution)}")
-    
+        
+        # Plotting results for the individual run
+        plt.figure(figsize=(10, 6))
+        plt.plot(best_fitness_over_time, label='Best Fitness Over Time')
+        plt.title(f'Best Fitness Over Time for Subset Size {size}')
+        plt.xlabel('Generations')
+        plt.ylabel('Best Fitness Value')
+        plt.grid(True)
+        plt.legend()
+        plt.savefig(f'plots/best_fitness_over_time_{size}.png')
+        plt.show()
+        
+        plt.figure(figsize=(10, 6))
+        plt.plot(mean_subset_size_over_time, label='Mean Subset Size Over Time')
+        plt.title(f'Mean Subset Size Over Time for Subset Size {size}')
+        plt.xlabel('Generations')
+        plt.ylabel('Mean Subset Size')
+        plt.grid(True)
+        plt.legend()
+        plt.savefig(f'plots/mean_subset_size_over_time_{size}.png')
+        plt.show()
+
     elif option == "2":
         results = run_experiment(start_time=start_time)
         plot_experiment_results(results)
