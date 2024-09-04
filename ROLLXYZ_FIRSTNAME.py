@@ -56,7 +56,7 @@ def genetic_algorithm(subsets, population_size=100, generations=50, mutation_rat
 
         fitnesses = [fitness_function(ind, subsets) for ind in population]
         
-        # Track the best fitness and corresponding solution
+        
         for i, fitness in enumerate(fitnesses):
             if fitness > best_fitness:
                 best_fitness = fitness
@@ -93,18 +93,18 @@ def run_experiment(start_time):
 
         scp = SetCoveringProblemCreator()
 
-        for _ in range(10):  # Perform 10 runs for each subset size
+        for _ in range(10):  
             subsets = scp.Create(usize=100, totalSets=size)
             _, best_fitness_over_time, mean_subset_size_over_time = genetic_algorithm(subsets, population_size=50, generations=50, start_time=start_time)
 
             fitness_over_time_all_runs.append(best_fitness_over_time)
             mean_subset_size_over_time_all_runs.append(mean_subset_size_over_time)
 
-        # Calculate mean and standard deviation of best fitness over time across all runs
+       
         mean_best_fitness_over_time = np.mean(fitness_over_time_all_runs, axis=0)
         std_best_fitness = np.std([run[-1] for run in fitness_over_time_all_runs])
 
-        # Store results
+        
         results[size] = {
             'mean_best_fitness': np.mean([run[-1] for run in fitness_over_time_all_runs]),
             'std_best_fitness': std_best_fitness,
@@ -131,7 +131,7 @@ def plot_experiment_results(results, output_dir='plots'):
     plt.figure(figsize=(10, 6))
     plt.errorbar(sizes, means, yerr=std_devs, fmt='-o', capsize=5, capthick=2, label='Mean Best Fitness ± Std. Dev.')
 
-    # Annotate all points with mean ± std dev
+    
     for i, size in enumerate(sizes):
         plt.annotate(f'{means[i]:.2f} ± {std_devs[i]:.2f}', 
                      (size, means[i]), 
