@@ -21,7 +21,7 @@ def fitness_function(individual, subsets):
         if bit:
             covered.update(subsets[i])
             count += 1
-    coverage = len(covered) / 100  # Assuming universe size is always 100
+    coverage = len(covered) / 100 
     return (coverage - (count / len(subsets))) * 100
 
 def select_parents(population, fitnesses):
@@ -34,14 +34,15 @@ def select_parents(population, fitnesses):
 
 def crossover(parent1, parent2):
     point = random.randint(1, len(parent1) - 1)
-    child = parent1[:point] + parent2[point:]
-    return child
+    child1 = parent1[:point] + parent2[point:]
+    child2 = parent2[:point] + parent1[point:]
+    return child1, child2
 
 def mutate(individual):
     i = random.randint(0, len(individual) - 1)
     individual[i] = 1 - individual[i]
 
-def genetic_algorithm(subsets, population_size=100, generations=50, mutation_rate=0.01, start_time=None):
+def genetic_algorithm(subsets, population_size=100, generations=50, start_time=None):
     population = initialize_population(population_size, subsets)
     best_fitness_over_time = []
     mean_subset_size_over_time = []
@@ -49,13 +50,17 @@ def genetic_algorithm(subsets, population_size=100, generations=50, mutation_rat
     best_solution = None
     best_fitness = float('-inf')
 
+    initial_mutation_rate = 0.3
+    final_mutation_rate = 0.01
+
     for generation in range(generations):
         if time.time() - start_time > MAX_TIME:
             print("Time limit reached.")
             break
 
-        fitnesses = [fitness_function(ind, subsets) for ind in population]
+        current_mutation_rate = initial_mutation_rate - (initial_mutation_rate - final_mutation_rate) * (generation / generations)
         
+        fitnesses = [fitness_function(ind, subsets) for ind in population]
         
         for i, fitness in enumerate(fitnesses):
             if fitness > best_fitness:
@@ -65,25 +70,27 @@ def genetic_algorithm(subsets, population_size=100, generations=50, mutation_rat
         best_fitness_over_time.append(best_fitness)
         mean_subset_size_over_time.append(sum(best_solution))
         
-        
         population2 = []
-        for _ in range(population_size):
+        for _ in range(population_size ):
             parent1, parent2 = select_parents(population, fitnesses)
-            child = crossover(parent1, parent2)
-            if random.random() < mutation_rate:
-                mutate(child)
-            population2.append(child)
+            child1, child2 = crossover(parent1, parent2)
+            if random.random() < current_mutation_rate:
+                mutate(child1)
+            if random.random() < current_mutation_rate:
+                mutate(child2)
+            population2.append(child1)
+            population2.append(child2)
         
         population = population2
 
-    return best_solution, best_fitness_over_time,  mean_subset_size_over_time
+    return best_solution, best_fitness_over_time, mean_subset_size_over_time
 
 
 
 
         
 
-def run_experiment(start_time):
+def run_experiment(start_time, generations=50):
     subset_sizes = [50, 150, 250, 350]
     results = {}
 
@@ -95,16 +102,14 @@ def run_experiment(start_time):
 
         for _ in range(10):  
             subsets = scp.Create(usize=100, totalSets=size)
-            _, best_fitness_over_time, mean_subset_size_over_time = genetic_algorithm(subsets, population_size=50, generations=50, start_time=start_time)
+            _, best_fitness_over_time, mean_subset_size_over_time = genetic_algorithm(subsets, population_size=50, generations=generations, start_time=start_time)
 
             fitness_over_time_all_runs.append(best_fitness_over_time)
             mean_subset_size_over_time_all_runs.append(mean_subset_size_over_time)
 
-       
         mean_best_fitness_over_time = np.mean(fitness_over_time_all_runs, axis=0)
         std_best_fitness = np.std([run[-1] for run in fitness_over_time_all_runs])
 
-        
         results[size] = {
             'mean_best_fitness': np.mean([run[-1] for run in fitness_over_time_all_runs]),
             'std_best_fitness': std_best_fitness,
@@ -118,20 +123,19 @@ def run_experiment(start_time):
 
 
 
-def plot_experiment_results(results, output_dir='plots'):
+def plot_experiment_results(results, generations=50, output_dir='plots'):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     sizes = sorted(results.keys())
     
-    # Plot mean and standard deviation of best fitness value after 50 generations
+    # Plot mean and standard deviation of best fitness value after specified generations
     means = [results[size]['mean_best_fitness'] for size in sizes]
     std_devs = [results[size]['std_best_fitness'] for size in sizes]
 
     plt.figure(figsize=(10, 6))
     plt.errorbar(sizes, means, yerr=std_devs, fmt='-o', capsize=5, capthick=2, label='Mean Best Fitness ± Std. Dev.')
 
-    
     for i, size in enumerate(sizes):
         plt.annotate(f'{means[i]:.2f} ± {std_devs[i]:.2f}', 
                      (size, means[i]), 
@@ -139,7 +143,7 @@ def plot_experiment_results(results, output_dir='plots'):
                      xytext=(0,10), 
                      ha='center')
 
-    plt.title('Mean and Std. Dev. of Best Fitness after 50 Generations')
+    plt.title(f'Mean and Std. Dev. of Best Fitness after {generations} Generations')
     plt.xlabel('Number of Subsets')
     plt.ylabel('Fitness Value')
     plt.xticks(sizes)
@@ -147,8 +151,7 @@ def plot_experiment_results(results, output_dir='plots'):
     plt.legend()
     plt.savefig(os.path.join(output_dir, 'mean_std_best_fitness.png'))
     
-
-    # Plot how the mean best fitness value changes over 50 generations for different subset sizes
+    # Plot how the mean best fitness value changes over the generations for different subset sizes
     plt.figure(figsize=(12, 8))
     for size in sizes:
         mean_fitness = results[size]['mean_fitness_over_time']
@@ -156,17 +159,16 @@ def plot_experiment_results(results, output_dir='plots'):
         
         # Annotate start and end points
         plt.annotate(f'{mean_fitness[0]:.2f}', (0, mean_fitness[0]), textcoords="offset points", xytext=(0,10), ha='center')
-        plt.annotate(f'{mean_fitness[-1]:.2f}', (len(mean_fitness) - 1, mean_fitness[-1]), textcoords="offset points", xytext=(0,10), ha='center')
+        plt.annotate(f'{mean_fitness[-1]:.2f}', (generations - 1, mean_fitness[-1]), textcoords="offset points", xytext=(0,10), ha='center')
 
-    plt.title('Mean Best Fitness Value over 50 Generations')
+    plt.title(f'Mean Best Fitness Value over {generations} Generations')
     plt.xlabel('Generations')
     plt.ylabel('Mean Fitness Value')
     plt.grid(True)
     plt.legend()
     plt.savefig(os.path.join(output_dir, 'mean_fitness_over_time.png'))
     
-
-    # Plot how the mean subset size changes over 50 generations for different subset sizes
+    # Plot how the mean subset size changes over the generations for different subset sizes
     plt.figure(figsize=(12, 8))
     for size in sizes:
         mean_subset_size = results[size]['mean_subset_size_over_time']
@@ -174,18 +176,14 @@ def plot_experiment_results(results, output_dir='plots'):
         
         # Annotate start and end points
         plt.annotate(f'{mean_subset_size[0]:.2f}', (0, mean_subset_size[0]), textcoords="offset points", xytext=(0,10), ha='center')
-        plt.annotate(f'{mean_subset_size[-1]:.2f}', (len(mean_subset_size) - 1, mean_subset_size[-1]), textcoords="offset points", xytext=(0,10), ha='center')
+        plt.annotate(f'{mean_subset_size[-1]:.2f}', (generations - 1, mean_subset_size[-1]), textcoords="offset points", xytext=(0,10), ha='center')
 
-    plt.title('Mean Subset Size for Highest Fitness over 50 Generations')
+    plt.title(f'Mean Subset Size for Highest Fitness over {generations} Generations')
     plt.xlabel('Generations')
     plt.ylabel('Mean Subset Size')
     plt.grid(True)
     plt.legend()
     plt.savefig(os.path.join(output_dir, 'mean_subset_size_over_time.png'))
-   
-    
-
-
     
 
 
@@ -236,8 +234,9 @@ def main():
         plt.show()
 
     elif option == "2":
-        results = run_experiment(start_time=start_time)
-        plot_experiment_results(results)
+        generations = 250
+        results = run_experiment(start_time=start_time, generations=generations)
+        plot_experiment_results(results, generations=generations)
     
     else:
         print("Invalid option. Please enter 1 or 2.")
