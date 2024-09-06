@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-MAX_TIME = 45
+MAX_TIME = 40
 
 def initialize_population(size, subsets):
     population = []
