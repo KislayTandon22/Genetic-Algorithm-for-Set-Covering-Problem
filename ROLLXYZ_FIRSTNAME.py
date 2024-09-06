@@ -42,7 +42,7 @@ def mutate(individual):
     i = random.randint(0, len(individual) - 1)
     individual[i] = 1 - individual[i]
 
-def genetic_algorithm(subsets, population_size=100, generations=50, start_time=None):
+def genetic_algorithm(subsets, population_size=100, generations=50, start_time=None, elitism_rate=0.1):
     population = initialize_population(population_size, subsets)
     best_fitness_over_time = []
     mean_subset_size_over_time = []
@@ -70,8 +70,13 @@ def genetic_algorithm(subsets, population_size=100, generations=50, start_time=N
         best_fitness_over_time.append(best_fitness)
         mean_subset_size_over_time.append(sum(best_solution))
         
-        population2 = []
-        for _ in range(population_size ):
+        # Introduce elitism
+        num_elites = int(elitism_rate * population_size)
+        sorted_population = [x for _, x in sorted(zip(fitnesses, population), reverse=True)]
+        elites = sorted_population[:num_elites]
+
+        population2 = elites.copy()
+        while len(population2) < population_size:
             parent1, parent2 = select_parents(population, fitnesses)
             child1, child2 = crossover(parent1, parent2)
             if random.random() < current_mutation_rate:
@@ -81,9 +86,10 @@ def genetic_algorithm(subsets, population_size=100, generations=50, start_time=N
             population2.append(child1)
             population2.append(child2)
         
-        population = population2
+        population = population2[:population_size]  # Ensure population size remains constant
 
     return best_solution, best_fitness_over_time, mean_subset_size_over_time
+
 
 
 
