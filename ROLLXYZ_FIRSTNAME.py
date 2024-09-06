@@ -202,7 +202,7 @@ def main():
         scp = SetCoveringProblemCreator()
         subsets = scp.Create(usize=100, totalSets=size)
         
-        best_solution, best_fitness_over_time, mean_subset_size_over_time = genetic_algorithm(subsets, population_size=50, generations=50, start_time=start_time)
+        best_solution, best_fitness_over_time, mean_subset_size_over_time = genetic_algorithm(subsets, population_size=50, generations=1000000, start_time=start_time)
         
         print(f"Number of sets: {len(best_solution)}")
         print("Solution:", end=" ")
@@ -221,7 +221,7 @@ def main():
         plt.grid(True)
         plt.legend()
         plt.savefig(f'plots/best_fitness_over_time_{size}.png')
-        plt.show()
+        
         
         plt.figure(figsize=(10, 6))
         plt.plot(mean_subset_size_over_time, label='Mean Subset Size Over Time')
@@ -231,7 +231,7 @@ def main():
         plt.grid(True)
         plt.legend()
         plt.savefig(f'plots/mean_subset_size_over_time_{size}.png')
-        plt.show()
+        
 
     elif option == "2":
         generations = 250
