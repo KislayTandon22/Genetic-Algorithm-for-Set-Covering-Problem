@@ -1,7 +1,6 @@
 import random
 import time
 from SetCoveringProblemCreator import *
-import os
 
 MAX_TIME = 40
 
@@ -19,7 +18,7 @@ def fitness_function(individual, subsets):
         if bit:
             covered.update(subsets[i])
             count += 1
-    coverage = len(covered) / 100 
+    coverage = len(covered) / 100  # Adjust universe size here if needed
     return (coverage - (count / len(subsets))) * 100
 
 def select_parents(population, fitnesses):
@@ -88,72 +87,31 @@ def genetic_algorithm(subsets, population_size=100, generations=50, start_time=N
 
     return best_solution, best_fitness_over_time, mean_subset_size_over_time
 
-def run_experiment(start_time, generations=50):
-    subset_sizes = [50, 150, 250, 350]
-    results = {}
-
-    for size in subset_sizes:
-        fitness_over_time_all_runs = []
-        mean_subset_size_over_time_all_runs = []
-
-        scp = SetCoveringProblemCreator()
-
-        for _ in range(10):  
-            subsets = scp.Create(usize=100, totalSets=size)
-            _, best_fitness_over_time, mean_subset_size_over_time = genetic_algorithm(subsets, population_size=50, generations=generations, start_time=start_time)
-
-            fitness_over_time_all_runs.append(best_fitness_over_time)
-            mean_subset_size_over_time_all_runs.append(mean_subset_size_over_time)
-
-        # Calculate mean and std using simple Python
-        mean_best_fitness_over_time = [sum(run) / len(run) for run in zip(*fitness_over_time_all_runs)]
-        mean_fitness = sum([run[-1] for run in fitness_over_time_all_runs]) / len(fitness_over_time_all_runs)
-        std_best_fitness = (sum((run[-1] - mean_fitness) ** 2 for run in fitness_over_time_all_runs) / len(fitness_over_time_all_runs)) ** 0.5
-
-        results[size] = {
-            'mean_best_fitness': mean_fitness,
-            'std_best_fitness': std_best_fitness,
-            'mean_fitness_over_time': mean_best_fitness_over_time,
-            'mean_subset_size_over_time': [sum(run) / len(run) for run in zip(*mean_subset_size_over_time_all_runs)]
-        }
-
-    return results
 
 def main():
-    print("Choose an option:")
-    print("1. Individual Run")
-    print("2. Batch Run")
+    scp = SetCoveringProblemCreator()
 
-    option = input("Enter your choice (1 or 2): ").strip()
+    # Load the SCP problem from the JSON file
+    listOfSubsets = scp.ReadSetsFromJson("scp_test.json")
 
-    start_time = time.time()  # Start timing after user input
+    # Start timing
+    start_time = time.time()
 
-    if option == "1":
-        size = int(input("Enter the subset size (e.g., 50, 150, 250, 350): "))
-        scp = SetCoveringProblemCreator()
-        subsets = scp.Create(usize=100, totalSets=size)
-        
-        best_solution, best_fitness_over_time, mean_subset_size_over_time = genetic_algorithm(subsets, population_size=50, generations=1000000, start_time=start_time)
-        
-        print(f"Number of sets: {len(best_solution)}")
-        print("Solution:", end=" ")
-        for i, bit in enumerate(best_solution):
-            print(f"{i}:{bit}", end=", ")
-        print()
-        print(f"Fitness value of best state: {fitness_function(best_solution, subsets)}")
-        print(f"Minimum number of subsets that can cover the universe set: {sum(best_solution)}")
-
-    elif option == "2":
-        generations = 250
-        results = run_experiment(start_time=start_time, generations=generations)
+    # Run the genetic algorithm on the problem loaded from JSON
+    best_solution, best_fitness_over_time, mean_subset_size_over_time = genetic_algorithm(listOfSubsets, population_size=50, generations=1000000, start_time=start_time)
     
-    else:
-        print("Invalid option. Please enter 1 or 2.")
-        sys.exit(1)
+    print(f"Number of sets: {len(best_solution)}")
+    print("Solution:", end=" ")
+    for i, bit in enumerate(best_solution):
+        print(f"{i}:{bit}", end=", ")
+    print()
+    print(f"Fitness value of best state: {fitness_function(best_solution, listOfSubsets)}")
+    print(f"Minimum number of subsets that can cover the universe set: {sum(best_solution)}")
 
-    end_time = time.time()  # End timing after the operation is completed
+    end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"Time taken: {elapsed_time:.3f} seconds")
+
 
 if __name__ == '__main__':
     main()
