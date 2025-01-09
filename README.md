@@ -42,8 +42,8 @@ This project implements a genetic algorithm to tackle the Set Covering Problem (
 |----------------|--------------|-------------------|
 | 50 subsets     | 48.10       | ±1.97            |
 | 150 subsets    | 61.60       | ±1.54            |
-| 250 subsets    | Peak        | Varied           |
-| 350 subsets    | Slight decrease | Increased     |
+| 250 subsets    | 71.09       | ±1.78            |
+| 350 subsets    | 65.67       | ±2.01            |
 
 ## ⚡ Improvements <a name="improvements"></a>
 
