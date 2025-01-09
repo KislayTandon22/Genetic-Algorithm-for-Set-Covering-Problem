@@ -86,7 +86,7 @@ pandas
 
 ### Installation
 ```bash
-git clone https://github.com/KislayTandon22/AI_assignment_1_Sem_1_24-25
+git clone https://github.com/KislayTandon22/Genetic-Algorithm-for-Set-Covering-Problem.git
 cd scp-genetic-algorithm
 pip install -r requirements.txt
 ```
