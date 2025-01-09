@@ -1,4 +1,4 @@
-# AI_assignment_1_Sem_1_24-25
+
 # 🧬 Genetic Algorithm for Set Covering Problem (SCP)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
